@@ -21,12 +21,7 @@
 #ifndef GTK_SOURCE_COMPLETION_VIM_WORDS_H
 #define GTK_SOURCE_COMPLETION_VIM_WORDS_H
 
-#if !defined (GTK_SOURCE_H_INSIDE) && !defined (GTK_SOURCE_COMPILATION)
-#error "Only <gtksourceview/gtksource.h> can be included directly."
-#endif
-
-#include <gtksourceview/gtksourcecompletionprovider.h>
-#include <gtk/gtk.h>
+#include <gtksourceview/gtksource.h>
 
 G_BEGIN_DECLS
 

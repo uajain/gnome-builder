@@ -23,14 +23,12 @@
 #include <config.h>
 #endif
 
-#include "gtksourceview/gtksource.h"
+#include <glib/gi18n.h>
 #include "gtksourcecompletionvimwordsproposal.h"
-#include "gtksourceview/gtksourceview-enumtypes.h"
-#include "gtksourceview/gtksourceview-i18n.h"
 
 #include <string.h>
-
-#include "gtksourcecompletionvimwords.h"
+#include "sourceview/ide-completion-provider.h"
+#include "sourceview/gtksourcecompletionvimwords.h"
 
 enum
 {
@@ -95,7 +93,7 @@ forward_search_finished (GtkSourceSearchContext      *search_context,
   GError *error = NULL;
   gboolean has_wrapped_around;
 
-  if (gtk_source_search_context_forward_finish (search_context,
+  if (gtk_source_search_context_forward_finish2 (search_context,
                                                 result,
                                                 &match_start,
                                                 &match_end,

@@ -21,10 +21,7 @@
 #ifndef GTK_SOURCE_COMPLETION_VIM_WORDS_PROPOSAL_H
 #define GTK_SOURCE_COMPLETION_VIM_WORDS_PROPOSAL_H
 
-#include <glib-object.h>
-#include <gtksourceview/gtksourcecompletionproposal.h>
-
-#include "gtksourceview/gtksourcetypes-private.h"
+#include <gtksourceview/gtksource.h>
 
 G_BEGIN_DECLS
 
