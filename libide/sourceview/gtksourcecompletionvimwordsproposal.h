@@ -22,6 +22,7 @@
 #define GTK_SOURCE_COMPLETION_VIM_WORDS_PROPOSAL_H
 
 #include <gtksourceview/gtksource.h>
+#include "sourceview/ide-completion-item.h"
 
 G_BEGIN_DECLS
 
@@ -39,14 +40,14 @@ typedef struct _GtkSourceCompletionVimWordsProposalPrivate      GtkSourceComplet
 
 struct _GtkSourceCompletionVimWordsProposal
 {
-  GObject parent;
+  IdeCompletionItem parent;
 
   GtkSourceCompletionVimWordsProposalPrivate *priv;
 };
 
 struct _GtkSourceCompletionVimWordsProposalClass
 {
-  GObjectClass parent_class;
+  IdeCompletionItemClass parent_class;
 };
 
 GType            gtk_source_completion_vim_words_proposal_get_type  (void) G_GNUC_CONST;

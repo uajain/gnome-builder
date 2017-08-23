@@ -24,7 +24,6 @@
 
 #include <glib/gi18n.h>
 #include "sourceview/gtksourcecompletionvimwordsproposal.h"
-#include "sourceview/ide-completion-item.h"
 
 struct _GtkSourceCompletionVimWordsProposalPrivate
 {

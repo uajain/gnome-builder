@@ -134,7 +134,7 @@ forward_search_finished (GtkSourceSearchContext      *search_context,
              }
 
 	  g_assert (offset > 0);
-
+          g_print ("text : %s", text);
 	  proposal = gtk_source_completion_vim_words_proposal_new (text, offset, NULL);
 	  g_hash_table_insert (self->priv->all_proposals, g_steal_pointer (&text), g_object_ref (proposal));
 	  g_object_unref (proposal);

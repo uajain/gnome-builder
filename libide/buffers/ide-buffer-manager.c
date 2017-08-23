@@ -40,7 +40,7 @@
 #include "history/ide-back-forward-list.h"
 #include "projects/ide-project-edit.h"
 #include "projects/ide-project-edit-private.h"
-#include "sourceview/ide-completion-words.h"
+#include "sourceview/gtksourcecompletionvimwords.h"
 #include "util/ide-doc-seq.h"
 #include "util/ide-progress.h"
 #include "vcs/ide-vcs.h"
@@ -55,7 +55,7 @@ struct _IdeBufferManager
   GPtrArray                *buffers;
   GHashTable               *timeouts;
   IdeBuffer                *focus_buffer;
-  GtkSourceCompletionWords *word_completion;
+  GtkSourceCompletionVimWords *word_completion;
   GSettings                *settings;
   GHashTable               *loading;
 
@@ -1668,7 +1668,7 @@ ide_buffer_manager_init (IdeBufferManager *self)
   self->buffers = g_ptr_array_new ();
   self->max_file_size = MAX_FILE_SIZE_BYTES_DEFAULT;
   self->timeouts = g_hash_table_new (g_direct_hash, g_direct_equal);
-  self->word_completion = g_object_new (IDE_TYPE_COMPLETION_WORDS, NULL);
+  self->word_completion = g_object_new (GTK_SOURCE_TYPE_COMPLETION_VIM_WORDS, NULL);
   self->settings = g_settings_new ("org.gnome.builder.editor");
   self->loading = g_hash_table_new_full ((GHashFunc)ide_file_hash,
                                          (GEqualFunc)ide_file_equal,
@@ -1763,7 +1763,7 @@ ide_buffer_manager_get_buffers (IdeBufferManager *self)
  *
  * Returns: (transfer none): A #GtkSourceCompletionWords
  */
-GtkSourceCompletionWords *
+GtkSourceCompletionVimWords *
 ide_buffer_manager_get_word_completion (IdeBufferManager *self)
 {
   g_return_val_if_fail (IDE_IS_BUFFER_MANAGER (self), NULL);
