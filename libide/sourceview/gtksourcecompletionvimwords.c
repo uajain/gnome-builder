@@ -29,7 +29,7 @@
 #include <string.h>
 #include "sourceview/ide-completion-provider.h"
 #include "sourceview/gtksourcecompletionvimwords.h"
-
+#include "sourceview/ide-completion-results-words.h"
 enum
 {
   PROP_0,
@@ -49,6 +49,7 @@ struct _GtkSourceCompletionVimWordsPrivate {
   GtkSourceSearchContext *search_context;
   GtkSourceSearchSettings *search_settings;
   GtkSourceCompletionContext *context;
+  IdeCompletionResultsWords *results;
   GHashTable *all_proposals;
   GtkSourceCompletionActivation activation;
   GIcon *icon;
@@ -136,6 +137,7 @@ forward_search_finished (GtkSourceSearchContext      *search_context,
 	  g_assert (offset > 0);
           g_print ("text : %s", text);
 	  proposal = gtk_source_completion_vim_words_proposal_new (text, offset, NULL);
+          ide_completion_results_take_proposal (self->priv->results, IDE_COMPLETION_ITEM (proposal));
 	  g_hash_table_insert (self->priv->all_proposals, g_steal_pointer (&text), g_object_ref (proposal));
 	  g_object_unref (proposal);
 	}
@@ -150,6 +152,7 @@ forward_search_finished (GtkSourceSearchContext      *search_context,
     }
 
 finish:
+/*
   list = g_hash_table_get_values (self->priv->all_proposals);
   list = g_list_sort (list, sort_by_offset);
 
@@ -159,6 +162,8 @@ finish:
                                                TRUE);
 
   g_list_free (list);
+*/
+  ide_completion_results_present (self->priv->results, GTK_SOURCE_COMPLETION_PROVIDER (self), self->priv->context);
 }
 
 static gchar *
@@ -192,6 +197,7 @@ completion_cleanup (GtkSourceCompletionVimWords *self)
 
   g_clear_object (&self->priv->search_settings);
   g_clear_object (&self->priv->search_context);
+  g_clear_object (&self->priv->results);
 }
 
 static void
@@ -235,11 +241,21 @@ gtk_source_completion_vim_words_populate (GtkSourceCompletionProvider *provider,
   self->priv->word = g_strconcat (ide_completion_provider_context_current_word (context),
                                   "[a-zA-Z0-9_]*",
                                   NULL);
+  if (self->priv->results != NULL)
+    {
+      if (ide_completion_results_replay (self->priv->results, ide_completion_provider_context_current_word (context)))
+        {
+          ide_completion_results_present (self->priv->results, provider, context);
+          return; //IDE EXIT
+        }
+      g_clear_pointer (&self->priv->results, g_object_unref);
+    }
 
   gtk_source_search_settings_set_search_text (self->priv->search_settings, self->priv->word);
 
   self->priv->cancel_id = g_signal_connect_swapped (context, "cancelled", G_CALLBACK (completion_cancelled_cb), self);
   self->priv->wrap_around_flag = FALSE;
+  self->priv->results = ide_completion_results_words_new (ide_completion_provider_context_current_word (context));
 
   gtk_source_search_context_forward_async (self->priv->search_context,
                                            &self->priv->insert_iter,
