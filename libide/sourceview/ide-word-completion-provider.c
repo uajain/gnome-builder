@@ -233,7 +233,6 @@ completion_cleanup (IdeWordCompletionProvider *self)
 
   g_clear_object (&self->priv->search_settings);
   g_clear_object (&self->priv->search_context);
-  g_clear_object (&self->priv->results);
 }
 
 static void
@@ -453,6 +452,7 @@ ide_word_completion_provider_dispose (GObject *object)
 
   g_clear_object (&self->priv->icon);
   g_clear_object (&self->priv->search_context);
+  g_clear_object (&self->priv->results);
 
   G_OBJECT_CLASS (ide_word_completion_provider_parent_class)->dispose (object);
 }
