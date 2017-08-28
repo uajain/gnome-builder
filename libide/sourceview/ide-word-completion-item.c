@@ -18,20 +18,23 @@
 
 #define G_LOG_DOMAIN "ide-word-completion-item"
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "sourceview/ide-word-completion-item.h"
 
-struct _IdeWordCompletionItemPrivate
+typedef struct
 {
   GIcon *icon;
   gchar *word;
   gint   offset;
+
+} IdeWordCompletionItemPrivate;
+
+struct _IdeWordCompletionItem
+{
+  IdeCompletionItem parent;
 };
 
-static void ide_word_completion_item_iface_init (gpointer g_iface, gpointer iface_data);
+static void ide_word_completion_item_iface_init (gpointer g_iface,
+                                                 gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (IdeWordCompletionItem,
                          ide_word_completion_item,
@@ -43,20 +46,26 @@ G_DEFINE_TYPE_WITH_CODE (IdeWordCompletionItem,
 static gchar *
 ide_word_completion_item_get_text (GtkSourceCompletionProposal *proposal)
 {
-  return g_strdup (IDE_WORD_COMPLETION_ITEM(proposal)->priv->word);
+  IdeWordCompletionItem *self = (IdeWordCompletionItem *) proposal;
+  IdeWordCompletionItemPrivate *priv = ide_word_completion_item_get_instance_private (self);
+
+  return g_strdup (priv->word);
 }
 
 static GIcon *
 ide_word_completion_item_get_gicon (GtkSourceCompletionProposal *proposal)
 {
-  return IDE_WORD_COMPLETION_ITEM(proposal)->priv->icon;
+  IdeWordCompletionItem *self = (IdeWordCompletionItem *) proposal;
+  IdeWordCompletionItemPrivate *priv = ide_word_completion_item_get_instance_private (self);
+
+  return priv->icon;
 }
 
 static void
 ide_word_completion_item_iface_init (gpointer g_iface,
                                      gpointer iface_data)
 {
-  GtkSourceCompletionProposalIface *iface = (GtkSourceCompletionProposalIface *)g_iface;
+  GtkSourceCompletionProposalIface *iface = (GtkSourceCompletionProposalIface *) g_iface;
 
   /* Interface data getter implementations */
   iface->get_label = ide_word_completion_item_get_text;
@@ -67,11 +76,11 @@ ide_word_completion_item_iface_init (gpointer g_iface,
 static void
 ide_word_completion_item_finalize (GObject *object)
 {
-  IdeWordCompletionItem *proposal;
+  IdeWordCompletionItem *self = (IdeWordCompletionItem *) object;
+  IdeWordCompletionItemPrivate *priv = ide_word_completion_item_get_instance_private (self);
 
-  proposal = IDE_WORD_COMPLETION_ITEM (object);
-  g_free (proposal->priv->word);
-  g_clear_object (&proposal->priv->icon);
+  g_free (priv->word);
+  g_object_unref (priv->icon);
 
   G_OBJECT_CLASS (ide_word_completion_item_parent_class)->finalize (object);
 }
@@ -87,21 +96,24 @@ ide_word_completion_item_class_init (IdeWordCompletionItemClass *klass)
 static void
 ide_word_completion_item_init (IdeWordCompletionItem *self)
 {
-  self->priv = ide_word_completion_item_get_instance_private (self);
 }
 
 IdeWordCompletionItem *
-ide_word_completion_item_new (const gchar *word, gint offset, GIcon *icon)
+ide_word_completion_item_new (const gchar *word,
+                              gint         offset,
+                              GIcon       *icon)
 {
   IdeWordCompletionItem *proposal;
-  
-  g_return_val_if_fail (word != NULL, NULL);
-  
-  proposal = g_object_new (IDE_TYPE_WORD_COMPLETION_ITEM, NULL);
+  IdeWordCompletionItemPrivate *priv;
 
-  proposal->priv->word = g_strdup (word);
-  proposal->priv->offset = offset;
-  proposal->priv->icon = icon;
+  g_return_val_if_fail (word != NULL, NULL);
+
+  proposal = g_object_new (IDE_TYPE_WORD_COMPLETION_ITEM, NULL);
+  priv = ide_word_completion_item_get_instance_private (proposal);
+
+  priv->word = g_strdup (word);
+  priv->offset = offset;
+  priv->icon = g_object_ref (icon);
 
   return proposal;
 }
@@ -109,13 +121,17 @@ ide_word_completion_item_new (const gchar *word, gint offset, GIcon *icon)
 const gchar *
 ide_word_completion_item_get_word (IdeWordCompletionItem *proposal)
 {
-  g_return_val_if_fail (IDE_IS_WORD_COMPLETION_ITEM (proposal), NULL);
-  return proposal->priv->word;
+  IdeWordCompletionItem *self = (IdeWordCompletionItem *) proposal;
+  IdeWordCompletionItemPrivate *priv = ide_word_completion_item_get_instance_private (self);
+
+  return priv->word;
 }
 
 gint
 ide_word_completion_item_get_offset (IdeWordCompletionItem *proposal)
 {
-  g_return_val_if_fail (IDE_IS_WORD_COMPLETION_ITEM (proposal), 0);
-  return proposal->priv->offset;
+  IdeWordCompletionItem *self = (IdeWordCompletionItem *) proposal;
+  IdeWordCompletionItemPrivate *priv = ide_word_completion_item_get_instance_private (self);
+
+  return priv->offset;
 }

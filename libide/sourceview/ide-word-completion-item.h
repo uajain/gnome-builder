@@ -25,31 +25,11 @@
 
 G_BEGIN_DECLS
 
-#define IDE_TYPE_WORD_COMPLETION_ITEM                   (ide_word_completion_item_get_type ())
-#define IDE_WORD_COMPLETION_ITEM(obj)                   (G_TYPE_CHECK_INSTANCE_CAST ((obj), IDE_TYPE_WORD_COMPLETION_ITEM, IdeWordCompletionItem))
-#define IDE_WORD_COMPLETION_ITEM_CONST(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), IDE_TYPE_WORD_COMPLETION_ITEM, IdeWordCompletionItem const))
-#define IDE_WORD_COMPLETION_ITEM_CLASS(klass)           (G_TYPE_CHECK_CLASS_CAST ((klass), IDE_TYPE_WORD_COMPLETION_ITEM, IdeWordCompletionItemClass))
-#define IDE_IS_WORD_COMPLETION_ITEM(obj)                (G_TYPE_CHECK_INSTANCE_TYPE ((obj), IDE_TYPE_WORD_COMPLETION_ITEM))
-#define IDE_IS_WORD_COMPLETION_ITEM_CLASS(klass)        (G_TYPE_CHECK_CLASS_TYPE ((klass), IDE_TYPE_WORD_COMPLETION_ITEM))
-#define IDE_WORD_COMPLETION_ITEM_GET_CLASS(obj)         (G_TYPE_INSTANCE_GET_CLASS ((obj), IDE_TYPE_WORD_COMPLETION_ITEM, IdeWordCompletionItemClass))
+#define IDE_TYPE_WORD_COMPLETION_ITEM (ide_word_completion_item_get_type ())
 
-typedef struct _IdeWordCompletionItem             IdeWordCompletionItem;
-typedef struct _IdeWordCompletionItemClass        IdeWordCompletionItemClass;
-typedef struct _IdeWordCompletionItemPrivate      IdeWordCompletionItemPrivate;
+G_DECLARE_FINAL_TYPE (IdeWordCompletionItem, ide_word_completion_item,
+                      IDE, WORD_COMPLETION_ITEM, IdeCompletionItem)
 
-struct _IdeWordCompletionItem
-{
-  IdeCompletionItem parent;
-
-  IdeWordCompletionItemPrivate *priv;
-};
-
-struct _IdeWordCompletionItemClass
-{
-  IdeCompletionItemClass parent_class;
-};
-
-GType                  ide_word_completion_item_get_type  (void) G_GNUC_CONST;
 IdeWordCompletionItem *ide_word_completion_item_new        (const gchar *word,
                                                             gint         offset,
                                                             GIcon       *icon);
