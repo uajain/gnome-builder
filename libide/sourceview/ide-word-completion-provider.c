@@ -18,17 +18,16 @@
 
 #define G_LOG_DOMAIN "ide-word-completion-provider"
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 #include <glib/gi18n.h>
 #include <string.h>
+
+#include "ide-debug.h"
+#include "ide-macros.h"
 
 #include "sourceview/ide-word-completion-provider.h"
 #include "sourceview/ide-word-completion-item.h"
 #include "sourceview/ide-word-completion-results.h"
 #include "sourceview/ide-completion-provider.h"
-#include "ide-debug.h"
 
 enum
 {
@@ -40,6 +39,7 @@ enum
   PROP_ACTIVATION,
   N_PROPERTIES
 };
+
 static GParamSpec *properties[N_PROPERTIES];
 
 static void ide_word_completion_provider_iface_init (GtkSourceCompletionProviderIface *iface);
@@ -71,8 +71,8 @@ G_DEFINE_TYPE_WITH_CODE (IdeWordCompletionProvider,
 
 static gboolean
 refresh_iters (IdeWordCompletionProvider *self,
-               GtkTextIter *match_start,
-               GtkTextIter *match_end)
+               GtkTextIter               *match_start,
+               GtkTextIter               *match_end)
 {
   GtkTextBuffer *buffer = NULL;
   GtkTextMark *insert_mark;
@@ -99,10 +99,11 @@ refresh_iters (IdeWordCompletionProvider *self,
 }
 
 static void
-forward_search_finished (GtkSourceSearchContext    *search_context,
-                         GAsyncResult              *result,
-                         IdeWordCompletionProvider *self)
+forward_search_finished (GtkSourceSearchContext *search_context,
+                         GAsyncResult           *result,
+                         gpointer                user_data)
 {
+  IdeWordCompletionProvider *self = (IdeWordCompletionProvider *)user_data;
   IdeWordCompletionItem *proposal;
   GtkTextBuffer *buffer = NULL;
   GtkTextMark *insert_mark;
@@ -190,17 +191,18 @@ forward_search_finished (GtkSourceSearchContext    *search_context,
                                                NULL,
                                                (GAsyncReadyCallback) forward_search_finished,
                                                self);
-      gtk_text_mark_get_deleted (start_mark);
-      gtk_text_mark_get_deleted (end_mark);
+      gtk_text_buffer_delete_mark (buffer, start_mark);
+      gtk_text_buffer_delete_mark (buffer, end_mark);
       return;
     }
 
 finish:
-
   ide_completion_results_present (IDE_COMPLETION_RESULTS (self->priv->results),
                                   GTK_SOURCE_COMPLETION_PROVIDER (self), self->priv->context);
-  gtk_text_mark_get_deleted (insert_mark);
-  g_hash_table_destroy (self->priv->all_proposals);
+
+  gtk_text_buffer_delete_mark (buffer, insert_mark);
+  g_clear_pointer (&self->priv->all_proposals, g_hash_table_destroy);
+  g_object_unref (self);
 }
 
 static gchar *
@@ -222,11 +224,7 @@ completion_cleanup (IdeWordCompletionProvider *self)
 
   if (self->priv->context != NULL)
     {
-      if (self->priv->cancel_id)
-        {
-          g_signal_handler_disconnect (self->priv->context, self->priv->cancel_id);
-          self->priv->cancel_id = 0;
-        }
+      ide_clear_signal_handler (self->priv->context, &self->priv->cancel_id);
 
       g_clear_object (&self->priv->context);
     }
@@ -236,11 +234,15 @@ completion_cleanup (IdeWordCompletionProvider *self)
 }
 
 static void
-completion_cancelled_cb (IdeWordCompletionProvider *self)
+completion_cancelled_cb (IdeWordCompletionProvider  *self,
+                         GtkSourceCompletionContext *context)
 {
+
+  if (context == NULL)
+    return;
+
   g_assert (IDE_IS_WORD_COMPLETION_PROVIDER (self));
 
-  //TODO : precondition checks ?
   completion_cleanup (self);
  }
 
@@ -265,6 +267,7 @@ ide_word_completion_provider_populate (GtkSourceCompletionProvider *provider,
   g_assert (self->priv->search_settings == NULL);
   g_assert (self->priv->search_context == NULL);
   g_assert (buffer != NULL);
+  g_assert (self->priv->cancel_id == 0);
 
   g_clear_pointer (&self->priv->current_word, g_free);
   self->priv->current_word = ide_completion_provider_context_current_word (context);
@@ -307,7 +310,7 @@ ide_word_completion_provider_populate (GtkSourceCompletionProvider *provider,
                                            &insert_iter,
                                            NULL,
                                            (GAsyncReadyCallback)forward_search_finished,
-                                           self);
+                                           g_object_ref (self));
 }
 
 static gboolean
@@ -553,7 +556,8 @@ ide_word_completion_provider_init (IdeWordCompletionProvider *self)
 }
 
 IdeWordCompletionProvider *
-ide_word_completion_provider_new (const gchar *name, GIcon *icon)
+ide_word_completion_provider_new (const gchar *name,
+                                  GIcon       *icon)
 {
   return g_object_new (IDE_TYPE_WORD_COMPLETION_PROVIDER,
                        "name", name,
