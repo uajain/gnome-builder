@@ -26,7 +26,6 @@ struct _IdeWordCompletionResults
   IdeCompletionResults parent_instance;
 };
 
-
 G_DEFINE_TYPE (IdeWordCompletionResults,
                ide_word_completion_results,
                IDE_TYPE_COMPLETION_RESULTS)
