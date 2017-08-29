@@ -60,6 +60,10 @@ struct _IdeWordCompletionProviderPrivate
   gint                           interactive_delay;
   gint                           priority;
   gboolean                       wrap_around_flag;
+
+  /* No references, cleared in *_finished_cb */
+  GtkTextMark                    *start_mark;
+  GtkTextMark                    *end_mark;
 };
 
 G_DEFINE_TYPE_WITH_CODE (IdeWordCompletionProvider,
@@ -75,22 +79,17 @@ refresh_iters (IdeWordCompletionProvider *self,
                GtkTextIter               *match_end)
 {
   GtkTextBuffer *buffer = NULL;
-  GtkTextMark *insert_mark;
-  GtkTextMark *start_mark = NULL;
-  GtkTextMark *end_mark = NULL;
 
   g_assert (IDE_IS_COMPLETION_PROVIDER (self));
+  g_assert (self->priv->start_mark != NULL);
+  g_assert (self->priv->end_mark != NULL);
 
-  insert_mark = GTK_TEXT_MARK (g_object_get_data (G_OBJECT (self), "insert-mark"));
-  buffer = gtk_text_mark_get_buffer (insert_mark);
+  buffer = gtk_text_mark_get_buffer (self->priv->start_mark);
 
-  start_mark = gtk_text_buffer_get_mark (buffer, "start-mark");
-  end_mark = gtk_text_buffer_get_mark (buffer, "end-mark");
-
-  if (start_mark != NULL && end_mark != NULL)
+  if (buffer)
     {
-      gtk_text_buffer_get_iter_at_mark (buffer, match_start, start_mark);
-      gtk_text_buffer_get_iter_at_mark (buffer, match_end, end_mark);
+      gtk_text_buffer_get_iter_at_mark (buffer, match_start, self->priv->start_mark);
+      gtk_text_buffer_get_iter_at_mark (buffer, match_end, self->priv->end_mark);
 
       return TRUE;
     }
@@ -106,7 +105,7 @@ forward_search_finished (GtkSourceSearchContext *search_context,
   IdeWordCompletionProvider *self = (IdeWordCompletionProvider *)user_data;
   IdeWordCompletionItem *proposal;
   GtkTextBuffer *buffer = NULL;
-  GtkTextMark *insert_mark;
+  GtkTextIter insert_iter;
   GtkTextIter match_start;
   GtkTextIter match_end;
   GError *error = NULL;
@@ -115,7 +114,10 @@ forward_search_finished (GtkSourceSearchContext *search_context,
   g_assert (IDE_IS_WORD_COMPLETION_PROVIDER (self));
   g_assert (G_IS_ASYNC_RESULT (result));
 
-  insert_mark = GTK_TEXT_MARK (g_object_get_data (G_OBJECT (self), "insert-mark"));
+  if (self->priv->context == NULL || !gtk_source_completion_context_get_iter (self->priv->context, &insert_iter))
+    return;
+
+  buffer = gtk_text_iter_get_buffer (&insert_iter);
 
   if (gtk_source_search_context_forward_finish2 (search_context,
                                                  result,
@@ -124,24 +126,19 @@ forward_search_finished (GtkSourceSearchContext *search_context,
                                                  &has_wrapped_around,
                                                  &error))
     {
-      GtkTextIter insert_iter;
-      GtkTextMark *start_mark = NULL;
-      GtkTextMark *end_mark = NULL;
       gchar *text = NULL;
 
-      buffer = gtk_text_mark_get_buffer (insert_mark);
-      g_assert (buffer != NULL);
+      self->priv->start_mark = gtk_text_buffer_create_mark (buffer, NULL, &match_start, FALSE);
+      self->priv->end_mark = gtk_text_buffer_create_mark (buffer, NULL, &match_end, FALSE);
 
-      start_mark = gtk_text_buffer_create_mark (buffer, "start-mark", &match_start, FALSE);
-      end_mark = gtk_text_buffer_create_mark (buffer, "end-mark", &match_end, FALSE);
-
-      if (start_mark == NULL || end_mark == NULL)
+      if (self->priv->start_mark == NULL || self->priv->end_mark == NULL)
         {
-          g_print ("Marks not set\n"); // just for debugging
-          return;
+          g_warning ("Cannot set start and end marks for word completion matches.");
+          g_object_unref (self);
+          return; //drop self ref count here but will do automatically if you use, g_autoptr..
         }
 
-      gtk_text_buffer_get_iter_at_mark (buffer, &insert_iter, insert_mark);
+      gtk_source_completion_context_get_iter (self->priv->context, &insert_iter);
 
       if (gtk_text_iter_equal (&match_end, &insert_iter) && self->priv->wrap_around_flag)
         goto finish;
@@ -153,7 +150,11 @@ forward_search_finished (GtkSourceSearchContext *search_context,
           goto finish;
         }
 
-      refresh_iters (self, &match_start, &match_end);
+      if (!refresh_iters (self, &match_start, &match_end))
+        {
+          g_warning ("Cannot refresh GtkTextIters for word completion matches.");
+          return;
+        }
 
       text = gtk_text_iter_get_text (&match_start, &match_end);
 
@@ -185,14 +186,14 @@ forward_search_finished (GtkSourceSearchContext *search_context,
 	  g_hash_table_add (self->priv->all_proposals, g_steal_pointer (&text));
 	}
 
-      gtk_text_buffer_get_iter_at_mark (buffer, &match_end, end_mark);
+      gtk_text_buffer_get_iter_at_mark (buffer, &match_end, self->priv->end_mark);
       gtk_source_search_context_forward_async (self->priv->search_context,
                                                &match_end,
                                                NULL,
                                                (GAsyncReadyCallback) forward_search_finished,
                                                self);
-      gtk_text_buffer_delete_mark (buffer, start_mark);
-      gtk_text_buffer_delete_mark (buffer, end_mark);
+      gtk_text_buffer_delete_mark (buffer, self->priv->start_mark);
+      gtk_text_buffer_delete_mark (buffer, self->priv->end_mark);
       return;
     }
 
@@ -200,7 +201,6 @@ finish:
   ide_completion_results_present (IDE_COMPLETION_RESULTS (self->priv->results),
                                   GTK_SOURCE_COMPLETION_PROVIDER (self), self->priv->context);
 
-  gtk_text_buffer_delete_mark (buffer, insert_mark);
   g_clear_pointer (&self->priv->all_proposals, g_hash_table_destroy);
   g_object_unref (self);
 }
@@ -254,7 +254,6 @@ ide_word_completion_provider_populate (GtkSourceCompletionProvider *provider,
   gchar *search_text = NULL;
   GtkTextIter insert_iter;
   GtkSourceBuffer *buffer;
-  GtkTextMark *insert_mark;
 
   if (!gtk_source_completion_context_get_iter (context, &insert_iter))
     {
@@ -300,9 +299,6 @@ ide_word_completion_provider_populate (GtkSourceCompletionProvider *provider,
   self->priv->cancel_id = g_signal_connect_swapped (context, "cancelled", G_CALLBACK (completion_cancelled_cb), self);
   self->priv->wrap_around_flag = FALSE;
   self->priv->results = ide_word_completion_results_new (self->priv->current_word);
-
-  insert_mark = gtk_text_buffer_get_insert (GTK_TEXT_BUFFER (buffer));
-  g_object_set_data (G_OBJECT (self), "insert-mark", insert_mark);
 
   self->priv->all_proposals = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
