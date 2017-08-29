@@ -113,7 +113,7 @@ ide_word_completion_item_new (const gchar *word,
 
   priv->word = g_strdup (word);
   priv->offset = offset;
-  priv->icon = g_object_ref (icon);
+  priv->icon = (icon != NULL) ? g_object_ref (icon) : NULL;
 
   return proposal;
 }
