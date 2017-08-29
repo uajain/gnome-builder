@@ -24,28 +24,9 @@
 G_BEGIN_DECLS
 
 #define IDE_TYPE_WORD_COMPLETION_PROVIDER            (ide_word_completion_provider_get_type ())
-#define IDE_WORD_COMPLETION_PROVIDER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), IDE_TYPE_WORD_COMPLETION_PROVIDER, IdeWordCompletionProvider))
-#define IDE_WORD_COMPLETION_PROVIDER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), IDE_TYPE_WORD_COMPLETION_PROVIDER, IdeWordCompletionProviderClass))
-#define IDE_IS_WORD_COMPLETION_PROVIDER(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), IDE_TYPE_WORD_COMPLETION_PROVIDER))
-#define IDE_IS_WORD_COMPLETION_PROVIDER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), IDE_TYPE_WORD_COMPLETION_PROVIDER))
-#define IDE_WORD_COMPLETION_PROVIDER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), IDE_TYPE_WORD_COMPLETION_PROVIDER, IdeWordCompletionProviderClass))
 
-typedef struct _IdeWordCompletionProvider             IdeWordCompletionProvider;
-typedef struct _IdeWordCompletionProviderClass        IdeWordCompletionProviderClass;
-typedef struct _IdeWordCompletionProviderPrivate      IdeWordCompletionProviderPrivate;
+G_DECLARE_FINAL_TYPE (IdeWordCompletionProvider, ide_word_completion_provider, IDE, WORD_COMPLETION_PROVIDER, GObject)
 
-struct _IdeWordCompletionProvider
-{
-  GObject parent;
-
-  IdeWordCompletionProviderPrivate *priv;
-};
-
-struct _IdeWordCompletionProviderClass {
-  GObjectClass parent_class;
-};
-
-GType                      ide_word_completion_provider_get_type (void) G_GNUC_CONST;
 IdeWordCompletionProvider *ide_word_completion_provider_new      (const gchar *name, GIcon *icon);
 
 G_END_DECLS
