@@ -80,7 +80,8 @@ ide_word_completion_item_finalize (GObject *object)
   IdeWordCompletionItemPrivate *priv = ide_word_completion_item_get_instance_private (self);
 
   g_free (priv->word);
-  g_object_unref (priv->icon);
+  if (priv->icon != NULL)
+    g_object_unref (priv->icon);
 
   G_OBJECT_CLASS (ide_word_completion_item_parent_class)->finalize (object);
 }
