@@ -86,7 +86,7 @@ refresh_iters (IdeWordCompletionProvider *self,
   IdeWordCompletionProviderPrivate *priv = ide_word_completion_provider_get_instance_private (self);
   GtkTextBuffer *buffer = NULL;
 
-  g_assert (IDE_IS_COMPLETION_PROVIDER (self));
+  g_assert (IDE_IS_WORD_COMPLETION_PROVIDER (self));
   g_assert (priv->start_mark != NULL);
   g_assert (priv->end_mark != NULL);
 
@@ -108,7 +108,7 @@ forward_search_finished (GtkSourceSearchContext *search_context,
                          GAsyncResult           *result,
                          gpointer                user_data)
 {
-  IdeWordCompletionProvider *self = (IdeWordCompletionProvider *)user_data;
+  g_autoptr(IdeWordCompletionProvider) self = user_data;
   IdeWordCompletionProviderPrivate *priv = ide_word_completion_provider_get_instance_private (self);
   IdeWordCompletionItem *proposal;
   GtkTextBuffer *buffer = NULL;
@@ -141,8 +141,7 @@ forward_search_finished (GtkSourceSearchContext *search_context,
       if (priv->start_mark == NULL || priv->end_mark == NULL)
         {
           g_warning ("Cannot set start and end marks for word completion matches.");
-          g_object_unref (self);
-          return; //drop self ref count here but will do automatically if you use, g_autoptr..
+          return;
         }
 
       gtk_source_completion_context_get_iter (priv->context, &insert_iter);
@@ -198,7 +197,7 @@ forward_search_finished (GtkSourceSearchContext *search_context,
                                                &match_end,
                                                NULL,
                                                (GAsyncReadyCallback) forward_search_finished,
-                                               self);
+                                               g_object_ref (self));
       gtk_text_buffer_delete_mark (buffer, priv->start_mark);
       gtk_text_buffer_delete_mark (buffer, priv->end_mark);
       return;
@@ -209,25 +208,6 @@ finish:
                                   GTK_SOURCE_COMPLETION_PROVIDER (self), priv->context);
 
   g_clear_pointer (&priv->all_proposals, g_hash_table_destroy);
-  g_object_unref (self);
-}
-
-static gchar *
-ide_word_completion_provider_get_name (GtkSourceCompletionProvider *provider)
-{
-  IdeWordCompletionProvider *self = (IdeWordCompletionProvider *) provider;
-  IdeWordCompletionProviderPrivate *priv = ide_word_completion_provider_get_instance_private (self);
-
-  return g_strdup (priv->name);
-}
-
-static GIcon *
-ide_word_completion_provider_get_gicon (GtkSourceCompletionProvider *provider)
-{
-  IdeWordCompletionProvider *self = (IdeWordCompletionProvider *) provider;
-  IdeWordCompletionProviderPrivate *priv = ide_word_completion_provider_get_instance_private (self);
-
-  return priv->icon;
 }
 
 static void
@@ -306,6 +286,7 @@ ide_word_completion_provider_populate (GtkSourceCompletionProvider *provider,
                                               NULL);
 
   priv->search_context = gtk_source_search_context_new (buffer, priv->search_settings);
+  gtk_source_search_context_set_highlight (priv->search_context, FALSE);
   priv->context = g_object_ref (context);
 
   search_text = g_strconcat (priv->current_word, "[a-zA-Z0-9_]*", NULL);
@@ -379,6 +360,24 @@ ide_word_completion_provider_get_start_iter (GtkSourceCompletionProvider *provid
 
   g_free (word);
   return TRUE;
+}
+
+static gchar *
+ide_word_completion_provider_get_name (GtkSourceCompletionProvider *provider)
+{
+  IdeWordCompletionProvider *self = (IdeWordCompletionProvider *) provider;
+  IdeWordCompletionProviderPrivate *priv = ide_word_completion_provider_get_instance_private (self);
+
+  return g_strdup (priv->name);
+}
+
+static GIcon *
+ide_word_completion_provider_get_gicon (GtkSourceCompletionProvider *provider)
+{
+  IdeWordCompletionProvider *self = (IdeWordCompletionProvider *) provider;
+  IdeWordCompletionProviderPrivate *priv = ide_word_completion_provider_get_instance_private (self);
+
+  return priv->icon;
 }
 
 static gint
